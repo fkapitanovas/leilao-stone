@@ -136,9 +136,12 @@ export function FipePrice({ make, model, year, currentPrice }: FipePriceProps) {
           </p>
         </div>
       </div>
-      <div className="mt-3 pt-3 border-t border-gray-200">
+      <div className="mt-3 pt-3 border-t border-gray-200 space-y-1">
         <p className="text-xs text-gray-500">
           Código FIPE: <span className="font-mono">{fipeData.codeFipe}</span>
+        </p>
+        <p className="text-xs text-gray-400 italic">
+          * Preço referente a veículos não blindados
         </p>
       </div>
     </div>
