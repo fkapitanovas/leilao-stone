@@ -9,6 +9,8 @@ import { BidForm } from '@/components/auction/BidForm'
 import { FipePrice } from '@/components/auction/FipePrice'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
 import { useBids } from '@/lib/hooks/useBids'
+import { useAuth } from '@/lib/hooks/useAuth'
+import { useToast } from '@/components/ui/Toast'
 import { Car, Calendar, Gauge, Palette, Info } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -18,7 +20,6 @@ interface BidItem {
   user_id: string
   amount: number
   created_at: string
-  profiles?: { name: string | null; email: string } | null
 }
 
 interface AuctionClientProps {
@@ -27,7 +28,9 @@ interface AuctionClientProps {
 }
 
 export function AuctionClient({ vehicle, initialBids }: AuctionClientProps) {
-  const { bids, currentPrice, loading } = useBids(vehicle.id)
+  const { bids, currentPrice, loading, cancelBid } = useBids(vehicle.id)
+  const { user } = useAuth()
+  const { addToast } = useToast()
   const displayBids = bids.length > 0 ? bids : initialBids
   const displayPrice = currentPrice || vehicle.current_price
 
@@ -40,6 +43,14 @@ export function AuctionClient({ vehicle, initialBids }: AuctionClientProps) {
       style: 'currency',
       currency: 'BRL',
     }).format(value)
+  }
+
+  const handleCancelBid = async (bidId: string) => {
+    const result = await cancelBid(bidId)
+    if (result.success) {
+      addToast('success', 'Lance cancelado com sucesso!')
+    }
+    return result
   }
 
   return (
@@ -177,7 +188,13 @@ export function AuctionClient({ vehicle, initialBids }: AuctionClientProps) {
               </h2>
             </CardHeader>
             <CardContent>
-              <BidHistory bids={displayBids} loading={loading} />
+              <BidHistory
+                bids={displayBids}
+                loading={loading}
+                currentUserId={user?.id}
+                onCancelBid={handleCancelBid}
+                auctionEnded={!isActive}
+              />
             </CardContent>
           </Card>
         </div>

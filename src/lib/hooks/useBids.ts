@@ -10,7 +10,6 @@ interface BidItem {
   user_id: string
   amount: number
   created_at: string
-  profiles?: { name: string | null; email: string } | null
 }
 
 export function useBids(vehicleId: string) {
@@ -24,28 +23,41 @@ export function useBids(vehicleId: string) {
       .from('bids')
       .select('*')
       .eq('vehicle_id', vehicleId)
-      .order('created_at', { ascending: false })
+      .order('amount', { ascending: false })
 
     if (bidsData) {
-      // Fetch profiles for each bid
-      const enrichedBids = await Promise.all(
-        bidsData.map(async (bid) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('name, email')
-            .eq('id', bid.user_id)
-            .single()
-
-          return {
-            ...bid,
-            profiles: profile,
-          }
-        })
-      )
-      setBids(enrichedBids)
+      setBids(bidsData)
     }
     setLoading(false)
   }, [supabase, vehicleId])
+
+  const cancelBid = useCallback(async (bidId: string): Promise<{ success: boolean; error?: string; newPrice?: number }> => {
+    try {
+      const response = await fetch('/api/bids', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bid_id: bidId }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        return { success: false, error: result.error || 'Erro ao cancelar lance' }
+      }
+
+      // Remove bid from local state
+      setBids((prev) => prev.filter((bid) => bid.id !== bidId))
+
+      // Update current price
+      if (result.new_price !== undefined) {
+        setCurrentPrice(result.new_price)
+      }
+
+      return { success: true, newPrice: result.new_price }
+    } catch {
+      return { success: false, error: 'Erro ao cancelar lance' }
+    }
+  }, [])
 
   const fetchVehicle = useCallback(async () => {
     const { data } = await supabase
@@ -74,23 +86,24 @@ export function useBids(vehicleId: string) {
           table: 'bids',
           filter: `vehicle_id=eq.${vehicleId}`,
         },
-        async (payload) => {
-          const newBid = payload.new as { id: string; vehicle_id: string; user_id: string; amount: number; created_at: string }
-
-          // Fetch profile for the new bid
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('name, email')
-            .eq('id', newBid.user_id)
-            .single()
-
-          const enrichedBid: BidItem = {
-            ...newBid,
-            profiles: profile,
-          }
-
-          setBids((prev) => [enrichedBid, ...prev])
+        (payload) => {
+          const newBid = payload.new as BidItem
+          setBids((prev) => [newBid, ...prev].sort((a, b) => b.amount - a.amount))
           setCurrentPrice(newBid.amount)
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'bids',
+          filter: `vehicle_id=eq.${vehicleId}`,
+        },
+        (payload) => {
+          const deletedBid = payload.old as { id: string }
+          setBids((prev) => prev.filter((bid) => bid.id !== deletedBid.id))
+          fetchVehicle() // Refresh current price
         }
       )
       .subscribe()
@@ -124,5 +137,6 @@ export function useBids(vehicleId: string) {
     currentPrice,
     loading,
     refetch: fetchBids,
+    cancelBid,
   }
 }
