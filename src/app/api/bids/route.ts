@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendOutbidEmail } from '@/lib/email'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -106,6 +107,17 @@ export async function POST(request: Request) {
       message: `Voce foi superado no leilao do ${vehicle.title}`,
       vehicle_id,
     })
+
+    // Send email notification
+    const { data: profile } = await adminClient
+      .from('profiles')
+      .select('email')
+      .eq('id', previousBid.user_id)
+      .single()
+
+    if (profile?.email) {
+      sendOutbidEmail(profile.email, vehicle.title, amount).catch(console.error)
+    }
   }
 
   return NextResponse.json(bid, { status: 201 })
