@@ -78,13 +78,17 @@ export function useAuth() {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
-      setUser(null)
-      setProfile(null)
-      // Force page reload to clear all state
-      window.location.href = '/'
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        console.error('Sign out error:', error)
+      }
     } catch (error) {
       console.error('Sign out error:', error)
+    } finally {
+      // Clear state and force reload regardless of result
+      setUser(null)
+      setProfile(null)
+      window.location.href = '/'
     }
   }
 
