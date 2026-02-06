@@ -4,15 +4,14 @@ import { createClient } from '@/lib/supabase/client'
 import { Profile } from '@/types/database'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
-
-const supabase = createClient()
+import { useEffect, useState, useMemo } from 'react'
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const supabase = useMemo(() => createClient(), [])
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -78,18 +77,37 @@ export function useAuth() {
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Sign out error:', error)
-      }
+      // Sign out from all sessions
+      await supabase.auth.signOut({ scope: 'global' })
     } catch (error) {
       console.error('Sign out error:', error)
-    } finally {
-      // Clear state and force reload regardless of result
-      setUser(null)
-      setProfile(null)
-      window.location.href = '/'
     }
+
+    // Clear all Supabase-related storage
+    if (typeof window !== 'undefined') {
+      // Clear localStorage items related to Supabase
+      const keysToRemove: string[] = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.includes('supabase') || key.includes('sb-'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
+
+      // Clear sessionStorage too
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && (key.includes('supabase') || key.includes('sb-'))) {
+          sessionStorage.removeItem(key)
+        }
+      }
+    }
+
+    // Clear state and force full page reload
+    setUser(null)
+    setProfile(null)
+    window.location.href = '/'
   }
 
   return {
