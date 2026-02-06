@@ -29,7 +29,7 @@ export default async function HomePage() {
       {/* Hero */}
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          Leilão de Veículo em Tempo Real
+          Leilão de Veículos em Tempo Real
         </h1>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
           Encontre o veículo dos seus sonhos com um preço incrível.
