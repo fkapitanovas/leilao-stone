@@ -77,7 +77,10 @@ export function useAuth() {
 
   const signOut = async () => {
     try {
-      // Sign out from all sessions
+      // Call server-side logout to clear cookies
+      await fetch('/api/auth/logout', { method: 'POST' })
+
+      // Also sign out on client side
       await supabase.auth.signOut({ scope: 'global' })
     } catch (error) {
       console.error('Sign out error:', error)
