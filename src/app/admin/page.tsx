@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { VehicleTable } from '@/components/admin/VehicleTable'
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardHeader } from '@/components/ui/Card'
-import { Plus, Car, DollarSign, Users } from 'lucide-react'
+import { Plus, Car, DollarSign, Users, Activity } from 'lucide-react'
 import Link from 'next/link'
 
 export const revalidate = 0
@@ -106,6 +106,25 @@ export default async function AdminPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="mb-8">
+        <Link href="/admin/bids/live">
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer border-green-200 bg-green-50">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-green-500 rounded-lg">
+                  <Activity className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-gray-900">Monitor de Lances em Tempo Real</p>
+                  <p className="text-sm text-gray-600">Acompanhe os lances conforme eles acontecem</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Vehicles Table */}
