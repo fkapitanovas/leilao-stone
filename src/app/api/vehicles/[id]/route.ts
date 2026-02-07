@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { validateAdmin } from '@/lib/auth/validateAdmin'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -45,21 +46,10 @@ export async function PUT(request: Request, { params }: RouteParams) {
   const { id } = await params
   const supabase = await createClient()
 
-  // Check auth
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 })
-  }
-
-  // Check admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.is_admin) {
-    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  // Check auth and admin status
+  const adminCheck = await validateAdmin(supabase)
+  if (!adminCheck.success) {
+    return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
   }
 
   // Validate body
@@ -95,21 +85,10 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   const { id } = await params
   const supabase = await createClient()
 
-  // Check auth
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 })
-  }
-
-  // Check admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.is_admin) {
-    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  // Check auth and admin status
+  const adminCheck = await validateAdmin(supabase)
+  if (!adminCheck.success) {
+    return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
   }
 
   // Check vehicle status

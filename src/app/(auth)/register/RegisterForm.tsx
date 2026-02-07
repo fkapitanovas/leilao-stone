@@ -26,12 +26,27 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>
 
+function getSafeRedirect(redirect: string | null): string {
+  if (!redirect) return '/'
+  // Only allow relative paths starting with /
+  // Reject absolute URLs, protocol-relative URLs, and javascript: URIs
+  if (
+    redirect.startsWith('/') &&
+    !redirect.startsWith('//') &&
+    !redirect.startsWith('/\\') &&
+    !redirect.toLowerCase().includes('javascript:')
+  ) {
+    return redirect
+  }
+  return '/'
+}
+
 export function RegisterForm() {
   const [loading, setLoading] = useState(false)
   const { addToast } = useToast()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirect = searchParams.get('redirect') || '/'
+  const redirect = getSafeRedirect(searchParams.get('redirect'))
   const supabase = createClient()
 
   const {

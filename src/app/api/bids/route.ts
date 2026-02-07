@@ -79,7 +79,28 @@ export async function POST(request: Request) {
   // Use admin client for write operations
   const adminClient = createAdminClient()
 
-  // Create bid
+  // ATOMIC OPERATION: Update vehicle price only if it hasn't changed (optimistic locking)
+  // This prevents race conditions where two bids are placed simultaneously
+  const { data: updatedVehicle, error: updateError } = await adminClient
+    .from('vehicles')
+    .update({
+      current_price: amount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', vehicle_id)
+    .eq('current_price', vehicle.current_price) // Only update if price hasn't changed
+    .select()
+    .single()
+
+  if (updateError || !updatedVehicle) {
+    // Price changed between read and write - another bid was placed
+    return NextResponse.json(
+      { error: 'Outro lance foi registrado. Por favor, atualize a pagina e tente novamente.' },
+      { status: 409 } // Conflict
+    )
+  }
+
+  // Create bid (only after vehicle update succeeded)
   const { data: bid, error: bidError } = await adminClient
     .from('bids')
     .insert({
@@ -91,17 +112,16 @@ export async function POST(request: Request) {
     .single()
 
   if (bidError) {
+    // Rollback: revert vehicle price if bid creation fails
+    await adminClient
+      .from('vehicles')
+      .update({
+        current_price: vehicle.current_price,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', vehicle_id)
     return NextResponse.json({ error: bidError.message }, { status: 500 })
   }
-
-  // Update vehicle current price
-  await adminClient
-    .from('vehicles')
-    .update({
-      current_price: amount,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', vehicle_id)
 
   // Notify previous highest bidder (if different from current)
   if (previousBid && previousBid.user_id !== user.id) {

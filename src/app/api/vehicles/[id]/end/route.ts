@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { validateAdmin } from '@/lib/auth/validateAdmin'
 import { NextResponse } from 'next/server'
 
 interface RouteParams {
@@ -11,21 +12,10 @@ export async function POST(request: Request, { params }: RouteParams) {
   const { id } = await params
   const supabase = await createClient()
 
-  // Check auth
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Nao autorizado' }, { status: 401 })
-  }
-
-  // Check admin
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('is_admin')
-    .eq('id', user.id)
-    .single()
-
-  if (!profile?.is_admin) {
-    return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+  // Check auth and admin status
+  const adminCheck = await validateAdmin(supabase)
+  if (!adminCheck.success) {
+    return NextResponse.json({ error: adminCheck.error }, { status: adminCheck.status })
   }
 
   // Get vehicle
